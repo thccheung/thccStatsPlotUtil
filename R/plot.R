@@ -85,49 +85,26 @@ get_plot_setup <- function(my_txt_size_bg = 5, my_txt_size_sm = 5){
 }
 
 
-#' Prepare dataframe mean + SEM for plotting
+
+#' Wrapper function to prepare dataframe for plotting bar graph. Allows up to
+#' two factors to be plotted, grouped into columns and colours.
 #'
+#' @param plot_select A string of the dependent variable to be plotted.
+#' @param df_grpsumm A tibble dataframe containing the group mean + SEM.
+#' @param df_indi A tibble dataframe containing individual subjects' data.
+#' @param factors A list of string containing the factors to be plotted.
 #'
+#' @return A list of 2 dataframes - group (with mean + SEM) and individual.
+#' Each has the specified depvar selected.
 #'
-get_plot_df_old <- function(plot_select, df_grpsumm, df_indi) {
-
-    plot_select_group <- c(stringr::str_c(plot_select, "_mean"),
-                           stringr::str_c(plot_select, "_sem"))
-
-    # select depvar cols, and rename
-    plot_df_group <- df_grpsumm %>%
-        select(Group, lesion_side, all_of(plot_select_group)) %>%
-        rename(my_mean = contains("_mean"),
-               my_sem = contains("_sem"),
-               my_x = lesion_side,
-               my_group = Group)
-
-    plot_df_indi <- df_indi %>%
-        select(SubID, Group, lesion_side, all_of(plot_select)) %>%
-        rename(my_x = lesion_side,
-               my_y = all_of(plot_select),
-               my_group = SubID,
-               my_colour = Group) %>%
-        arrange(my_colour)  # sort order by plot colour
-
-    # reorder SubID factor to plot points in order
-    plot_df_indi$my_group <- fct_inorder(plot_df_indi$my_group)
-
-    return(list(group_df = plot_df_group,
-                indi_df = plot_df_indi)
-    )
-}
-
-
-#' Prepare dataframe mean + SEM for plotting
-#'
+#' @export
 #'
 get_plot_df <- function(plot_select, df_grpsumm, df_indi, factors) {
 
     if (length(factors) > 2) {
         stop("length of 'factors' need to be 2 (2 factor jitterdodge) or 1")
     } else if (length(factors) == 1) {
-        factors = rep(factors, 2)
+        factors = rep(factors, 2)  # replicate if only has one factor, to make downstream plotting easier
     }
     factor_1 <- factors[1]
     factor_2 <- factors[2]
@@ -135,24 +112,27 @@ get_plot_df <- function(plot_select, df_grpsumm, df_indi, factors) {
     plot_select_group <- c(stringr::str_c(plot_select, "_mean"),
                            stringr::str_c(plot_select, "_sem"))
 
-    # select depvar cols, and rename
+    # select depvar cols, then rename, for group-summary dataframe
     plot_df_group <- df_grpsumm %>%
-        select(all_of(factor_1), all_of(factor_2), all_of(plot_select_group)) %>%
-        rename(my_mean = contains("_mean"),
-               my_sem = contains("_sem")) %>%
-        mutate(my_group = .data[[factor_1]],
-               my_x = .data[[factor_2]])
+        dplyr::select(dplyr::all_of(factor_1), dplyr::all_of(factor_2),
+                      dplyr::all_of(plot_select_group)) %>%
+        dplyr::rename(my_mean = dplyr::contains("_mean"),
+                      my_sem = dplyr::contains("_sem")) %>%
+        dplyr::mutate(my_group = .data[[factor_1]],
+                      my_x = .data[[factor_2]])
 
+    # select depvar cols, then rename, for individual subject dataframe
     plot_df_indi <- df_indi %>%
-        select(SubID, all_of(factor_1), all_of(factor_2), all_of(plot_select)) %>%
-        mutate(my_x = .data[[factor_2]]) %>%
-        rename(my_y = all_of(plot_select),
-               my_group = SubID,
-               my_colour = .data[[factor_1]]) %>%
-        arrange(my_colour)  # sort order by plot colour
+        dplyr::select(subID, dplyr::all_of(factor_1), dplyr::all_of(factor_2),
+                      dplyr::all_of(plot_select)) %>%
+        dplyr::mutate(my_x = .data[[factor_2]]) %>%
+        dplyr::rename(my_y = dplyr::all_of(plot_select),
+                      my_group = subID,
+                      my_colour = .data[[factor_1]]) %>%
+        dplyr::arrange(my_colour)  # sort order by plot colour
 
-    # reorder SubID factor to plot points in order
-    plot_df_indi$my_group <- fct_inorder(plot_df_indi$my_group)
+    # reorder subID factor to plot points in order
+    plot_df_indi$my_group <- forcats::fct_inorder(plot_df_indi$my_group)
 
     return(list(group_df = plot_df_group,
                 indi_df = plot_df_indi)
@@ -161,6 +141,8 @@ get_plot_df <- function(plot_select, df_grpsumm, df_indi, factors) {
 
 
 #' Plot crossbar graph with jitterdodge with 2 factors my_x and my_group
+#'
+#'
 plot_bargraph_jittdodge <- function(df_group, df_indi, plot_setup) {
 
     # parse plot_setup list
@@ -188,29 +170,30 @@ plot_bargraph_jittdodge <- function(df_group, df_indi, plot_setup) {
 
 
     # run ggplot
-    my_plot <- ggplot() +
+    my_plot <- ggplot2::ggplot() +
 
-        geom_crossbar(data = df_group,
-                      mapping = aes(x = my_x, y = my_mean,
-                                    ymin = my_mean, ymax = my_mean,
-                                    fill = my_group,
-                                    colour = my_group),
-                      size = crossbar_size, alpha = 1, width = crossbar_width,
-                      position = pd,
-                      show.legend = show_legend
+        # use 'my_mean' to plot crossbar
+        ggplot2::geom_crossbar(
+            data = df_group,
+            mapping = ggplot2::aes(x = my_x, y = my_mean,
+                                   ymin = my_mean, ymax = my_mean,
+                                   fill = my_group, colour = my_group),
+            size = crossbar_size, alpha = 1, width = crossbar_width,
+            position = pd, show.legend = show_legend
         ) +
 
-        geom_errorbar(data = df_group,
-                      mapping = aes(x = my_x,
-                                    ymin = my_mean - my_sem,
-                                    ymax = my_mean + my_sem,
-                                    group = my_group,
-                                    colour = my_group),
-                      size = errorbar_size, alpha = 1, width = errorbar_width,
-                      position = pd,
-                      show.legend = show_legend
+        # plot error bars
+        ggplot2::geom_errorbar(
+            data = df_group,
+            mapping = ggplot2::aes(x = my_x,
+                                   ymin = my_mean - my_sem,
+                                   ymax = my_mean + my_sem,
+                                   group = my_group, colour = my_group),
+            size = errorbar_size, alpha = 1, width = errorbar_width,
+            position = pd, show.legend = show_legend
         )
 
+    # plot individuals' data if needed
     if (!is.null(df_indi)) {
 
         my_plot <- my_plot +
