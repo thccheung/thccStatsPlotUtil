@@ -93,11 +93,23 @@ oneway_anova <- function(df_data, subID="SubID",
 #'
 one_sample_ttest <- function(x, mu = 0) {
 
-    # run Shapiro-Wilk normality test
-    cat("\nFirst test normality to see if non-parametric t-test needed\n")
-    norm_test <- stats::shapiro.test(x)
-    print(norm_test)
+    ncount_non_na = sum(!is.na(x))
 
+    # run Shapiro-Wilk normality test
+    if (ncount_non_na >= 3 && ncount_non_na <= 5000) {
+        cat("\nFirst test normality to see if non-parametric t-test needed\n")
+        norm_test <- stats::shapiro.test(x)
+        print(norm_test)
+    } else {
+        cat("\nDid not run Shapiro-wilk normality test due to N being", ncount_non_na, ".\n")
+        cat("\nShapiro-wilk normality test requires N to be between 3-5000.\n")
+        norm_test <- list(p.value = 0)
+    }
+
+    if (ncount_non_na <= 1) {
+        cat("\nDid not run one-sample t-test due to too few N.\n")
+        return()
+    }
 
     if (norm_test$p.value < 0.05) {
         cat("\nRunning Mann-Whitney-Wilcoxon (non-param T-test) because failed Shapiro-Wilk\n")
@@ -113,6 +125,8 @@ one_sample_ttest <- function(x, mu = 0) {
     }
 
 }
+
+
 
 
 #' Run multiple parametric one-sample t-tests against a fixed constant, then

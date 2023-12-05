@@ -1,4 +1,4 @@
-#library(tidyverse)
+library(ggplot2)
 #source("./R/util.R")
 
 #' Plot crossbar graph with 1 grouping variable
@@ -12,7 +12,7 @@ nb_barplot <- function(df_data, grpvar, yplot) {
 
     my_plot <- ggplot() +
 
-        geom_point(data = df_data,
+        geom_point(data = plot_data,
                    mapping = aes(x = {{ grpvar }},
                                  y = Depvar,
                                  colour = {{ grpvar }}),
@@ -29,6 +29,12 @@ nb_barplot <- function(df_data, grpvar, yplot) {
                                     ymax = Depvar_mean + Depvar_sem,
                                     colour = {{ grpvar }}),
                       width = 0.5)
+
+    my_plot <- my_plot +
+        theme(axis.text.x = element_text(angle = 20, vjust = 0.8, hjust=0.8),
+              axis.title.x = element_blank(),
+              legend.position = "none"
+        )
 
     return(my_plot)
 }

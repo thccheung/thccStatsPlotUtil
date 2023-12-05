@@ -1,3 +1,27 @@
+---
+title: "CJXT53-54 6OHDA OField LDR, DLC output analysis"
+author: "THC Cheung"
+date: "`r format(Sys.time())`"
+output:
+  html_document:
+    toc: yes
+    df_print: paged
+  html_notebook:
+    toc: yes
+    number_sections: yes
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE, cache=FALSE}
+options(scipen = 0, digits = 3) # set decimal points in output
+```
+
+```{r load_data, include = FALSE}
+# make sure to select "Project Directory" as Knit directory in RStudio GUI
+
+# Setup
+## Pre-load packages
 library(readr)
 library(dplyr)
 library(stringr)
@@ -7,10 +31,9 @@ source("./R/stats_summary.R")
 source("./R/stats_funs.R")
 source("./R/barplot_for_notebook.R")
 
-
 ## Folders
-# my_work_folder <- "E:/TimCheung/Dropbox (Personal)/"
-my_work_folder <- "C:/Users/timhc/Dropbox/"
+my_work_folder <- "E:/TimCheung/Dropbox (Personal)/"
+# my_work_folder <- "C:/Users/timhc/Dropbox/"
 
 proj_folder <- "/Work/DLC/Cir_Sq_OpField_v2-TC-2022-10-18/vid_analyse/DLC_bout_csv_output/"
 
@@ -50,13 +73,17 @@ data_combo <- data_combo %>%
 my_col_char <- data_combo %>% dplyr::summarise_all(class) %>% stringr::str_detect("character|factor")
 my_colnames_char <- colnames(data_combo[my_col_char])
 my_colnames_non_char <- colnames(data_combo[!my_col_char])
+```
 
+
+
+``` {r plot_analyse_loop, fig.width=4, fig.height=3, echo=FALSE, message=FALSE, error=TRUE}
 
 exclude_cw_ccw <- TRUE
 
 my_curr_var <- 1
 
-for (i in 127:length(my_colnames_non_char)) {
+for (i in 114:length(my_colnames_non_char)) {
 
     # go thru each column variables
     my_colnames_test <- append(my_colnames_char, my_colnames_non_char[i])
@@ -68,15 +95,11 @@ for (i in 127:length(my_colnames_non_char)) {
         next
     } else {
 
-        print(paste0(my_curr_var, ": ", my_var))
-
-
         # summarize
         by_sess_name_data_test <- data_test %>%
             group_by(sess_name) %>%
             calc_mean_sem()
-        by_sess_name_data_test
-
+        
         # plot graph
         my_plot <- nb_barplot(data_test, sess_name, var) +
             theme(axis.text.x = element_text(angle = 20, vjust = 0.8, hjust=0.8),
@@ -84,8 +107,15 @@ for (i in 127:length(my_colnames_non_char)) {
                   axis.title.y = element_blank(),
                   legend.position = "none") +
             ggtitle(my_var)
-        my_plot
-
+        print(my_plot)
+        cat("  \n")
+        
+        # print current variable
+        print(paste0(my_curr_var, ": ", my_var))
+        cat("  \n")
+        
+        print(by_sess_name_data_test)
+        cat("  \n")
 
         # t-tests, BL vs. Probe-S1
         pull_grp = "paired"
@@ -134,95 +164,11 @@ for (i in 127:length(my_colnames_non_char)) {
 
         print("Diff (BL vs. Probe) of paired-unpaired diff score")
         one_sample_ttest(data_test_diff_probe$diff - data_test_diff_BL$diff)
-
-
+        
         my_curr_var <- my_curr_var + 1
     }
 
 }
 
-
-#######################
-paste0(my_curr_var, ": ", my_var)
-
-# summarize
-by_sess_name_data_test <- data_test %>%
-    group_by(sess_name) %>%
-    calc_mean_sem()
-by_sess_name_data_test
-
-# plot graph
-my_plot <- nb_barplot(data_test, sess_name, var) +
-    theme(axis.text.x = element_text(angle = 20, vjust = 0.8, hjust=0.8),
-          axis.title.x = element_blank(),
-          axis.title.y = element_blank(),
-          legend.position = "none") +
-    ggtitle(my_var)
-my_plot
-
-
-# t-tests, BL vs. Probe-S1
-pull_grp = "paired"
-data_test_diff_paired <- data_test %>%
-    dplyr::filter(context==pull_grp) %>%
-    dplyr::select(!sess_name) %>%
-    tidyr::pivot_wider(names_from="sess", values_from="var") %>%
-    dplyr::mutate(diff = probe_S1 - BL)
-
-pull_grp = "unpaired"
-data_test_diff_unpaired <- data_test %>%
-    dplyr::filter(context==pull_grp) %>%
-    dplyr::select(!sess_name) %>%
-    tidyr::pivot_wider(names_from="sess", values_from="var") %>%
-    dplyr::mutate(diff = probe_S1 - BL)
-
-print("BL vs. Probe-S1, paired context")
-one_sample_ttest(data_test_diff_paired$diff)
-
-print("BL vs. Probe-S1, unpaired context")
-one_sample_ttest(data_test_diff_unpaired$diff)
-
-print("Diff (paired vs. unpaired) of Probe-BL diff score")
-one_sample_ttest(data_test_diff_paired$diff - data_test_diff_unpaired$diff)
-
-# t-tests, paired vs. unpaired
-pull_grp = "BL"
-data_test_diff_BL <- data_test %>%
-    dplyr::filter(sess==pull_grp) %>%
-    dplyr::select(!sess_name) %>%
-    tidyr::pivot_wider(names_from="context", values_from="var") %>%
-    dplyr::mutate(diff = paired - unpaired)
-
-pull_grp = "probe_S1"
-data_test_diff_probe <- data_test %>%
-    dplyr::filter(sess==pull_grp) %>%
-    dplyr::select(!sess_name) %>%
-    tidyr::pivot_wider(names_from="context", values_from="var") %>%
-    dplyr::mutate(diff = paired - unpaired)
-
-print("Paired vs. unpaired context, BL sess")
-one_sample_ttest(data_test_diff_BL$diff)
-
-print("Paired vs. unpaired context, Probe-S1 sess")
-one_sample_ttest(data_test_diff_probe$diff)
-
-print("Diff (BL vs. Probe) of paired-unpaired diff score")
-one_sample_ttest(data_test_diff_probe$diff - data_test_diff_BL$diff)
-
-
-
-# overall ANOVA
-my_stats <- ez::ezANOVA(
-    data_test,
-    dv = .(var),
-    wid = .(MouseID),
-    within = .(sess, context),
-    detailed = TRUE,
-    type = 3,
-    return_aov = TRUE
-)
-
-print(my_stats[1])
-print(my_stats[2])
-
+```
 
