@@ -1,5 +1,5 @@
 ---
-title: "CJXT53-54 6OHDA OField LDR, DLC output analysis"
+title: "CJXT53-54 6OHDA OField LDR, DLC output analysis, BL vs. LDR Probe"
 author: "THC Cheung"
 date: "`r format(Sys.time())`"
 output:
@@ -60,7 +60,8 @@ data_BL_unpaired <-  readr::read_csv(file_path_BL_unpaired) %>%
 data_probe_unpaired <-  readr::read_csv(file_path_probe_unpaired) %>%
     tibble::add_column(sess_name = "probe_S1_unpaired", sess = "probe_S1", context = "unpaired")
 
-data_combo <- dplyr::bind_rows(data_BL_paired, data_probe_paired, data_BL_unpaired, data_probe_unpaired)
+data_combo <- dplyr::bind_rows(data_BL_paired, data_probe_paired,
+                               data_BL_unpaired, data_probe_unpaired)
 
 # Re-order factors for plotting
 my_col_factor <- c('MouseID', '6OHDA_side', 'sess_name', 'sess', 'context')
@@ -73,6 +74,7 @@ data_combo <- data_combo %>%
 my_col_char <- data_combo %>% dplyr::summarise_all(class) %>% stringr::str_detect("character|factor")
 my_colnames_char <- colnames(data_combo[my_col_char])
 my_colnames_non_char <- colnames(data_combo[!my_col_char])
+
 ```
 
 
@@ -83,7 +85,7 @@ exclude_cw_ccw <- TRUE
 
 my_curr_var <- 1
 
-for (i in 114:length(my_colnames_non_char)) {
+for (i in 1:length(my_colnames_non_char)) {
 
     # go thru each column variables
     my_colnames_test <- append(my_colnames_char, my_colnames_non_char[i])
@@ -95,11 +97,15 @@ for (i in 114:length(my_colnames_non_char)) {
         next
     } else {
 
+        # print(paste0(my_curr_var, ": ", my_var))
+        cat("\n*****", my_curr_var, ":", my_var, "*****\n")
+
         # summarize
         by_sess_name_data_test <- data_test %>%
             group_by(sess_name) %>%
             calc_mean_sem()
-        
+        by_sess_name_data_test
+
         # plot graph
         my_plot <- nb_barplot(data_test, sess_name, var) +
             theme(axis.text.x = element_text(angle = 20, vjust = 0.8, hjust=0.8),
@@ -108,14 +114,6 @@ for (i in 114:length(my_colnames_non_char)) {
                   legend.position = "none") +
             ggtitle(my_var)
         print(my_plot)
-        cat("  \n")
-        
-        # print current variable
-        print(paste0(my_curr_var, ": ", my_var))
-        cat("  \n")
-        
-        print(by_sess_name_data_test)
-        cat("  \n")
 
         # t-tests, BL vs. Probe-S1
         pull_grp = "paired"
@@ -132,13 +130,13 @@ for (i in 114:length(my_colnames_non_char)) {
             tidyr::pivot_wider(names_from="sess", values_from="var") %>%
             dplyr::mutate(diff = probe_S1 - BL)
 
-        print("BL vs. Probe-S1, paired context")
+        cat("\n*** BL vs. Probe-S1, paired context ***\n")
         one_sample_ttest(data_test_diff_paired$diff)
 
-        print("BL vs. Probe-S1, unpaired context")
+        cat("\n*** BL vs. Probe-S1, unpaired context ***\n")
         one_sample_ttest(data_test_diff_unpaired$diff)
 
-        print("Diff (paired vs. unpaired) of Probe-BL diff score")
+        cat("\n*** Diff (paired vs. unpaired) of Probe-BL diff score ***\n")
         one_sample_ttest(data_test_diff_paired$diff - data_test_diff_unpaired$diff)
 
         # t-tests, paired vs. unpaired
@@ -156,15 +154,16 @@ for (i in 114:length(my_colnames_non_char)) {
             tidyr::pivot_wider(names_from="context", values_from="var") %>%
             dplyr::mutate(diff = paired - unpaired)
 
-        print("Paired vs. unpaired context, BL sess")
+        cat("\n*** Paired vs. unpaired context, BL sess ***\n")
         one_sample_ttest(data_test_diff_BL$diff)
 
-        print("Paired vs. unpaired context, Probe-S1 sess")
+        cat("\n*** Paired vs. unpaired context, Probe-S1 sess ***\n")
         one_sample_ttest(data_test_diff_probe$diff)
 
-        print("Diff (BL vs. Probe) of paired-unpaired diff score")
+        cat("\n*** Diff (BL vs. Probe) of paired-unpaired diff score ***\n")
         one_sample_ttest(data_test_diff_probe$diff - data_test_diff_BL$diff)
-        
+
+
         my_curr_var <- my_curr_var + 1
     }
 
