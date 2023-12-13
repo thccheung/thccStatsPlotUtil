@@ -9,8 +9,8 @@ source("./R/barplot_for_notebook.R")
 
 
 ## Folders
-my_work_folder <- "E:/TimCheung/Dropbox (Personal)/"
-# my_work_folder <- "C:/Users/timhc/Dropbox/"
+# my_work_folder <- "E:/TimCheung/Dropbox (Personal)/"
+my_work_folder <- "C:/Users/timhc/Dropbox/"
 
 proj_folder <- "/Work/DLC/Cir_Sq_OpField_v2-TC-2022-10-18/vid_analyse/DLC_bout_csv_output/"
 
@@ -237,3 +237,5 @@ print(my_stats[1])
 print(my_stats[2])
 
 
+
+oneway_anova_wn(data_test, subID="MouseID", wn_factor="sess", btw_factor = NULL, depvar="var")

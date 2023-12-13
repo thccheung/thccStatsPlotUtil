@@ -215,3 +215,88 @@ two_sample_ttest <- function(data_1, data_2) {
     print(T_out)
 
 }
+
+
+oneway_anova_wn <- function(df_data, subID="SubID", wn_factor="wn_factor",
+                            btw_factor=NULL, depvar="Depvar", remove_NaN=TRUE) {
+
+    # rename col names if necessary
+    my_data <- df_data %>%
+        dplyr::rename(subID = {{ subID }},
+                      wn_factor = {{ wn_factor }},
+                      btw_factor = {{ btw_factor }},
+                      depvar = {{ depvar }})
+
+    if (remove_NaN) {
+        na_data <- my_data %>%
+            dplyr::ungroup() %>%
+            dplyr::select(depvar) %>%
+            dplyr::filter(is.na(depvar)) %>%
+            dplyr::tally()
+
+        if (na_data$n > 0) {
+            cat("\nRemoved", na_data$n, "NA from data.\n")
+        }
+
+        my_data_na <- my_data %>%
+            dplyr::filter(is.na(depvar)) %>%
+            dplyr::select(subID) %>%
+            dplyr::distinct(subID)
+
+        if (nrow(my_data_na) > 0) {
+            my_data <- my_data %>%
+                dplyr::anti_join(my_data_na, by = join_by(subID)) %>%
+                dplyr::mutate(subID = factor(subID))
+        }
+    }
+
+    nsub <- nrow(distinct(my_data, subID))
+    if (nsub <= 1) {
+
+        cat("\nDid not run stats because there is only", nsub, "subjects\n")
+        return()
+
+    }
+
+    # run parametric ANOVA
+    cat("\nParametric ANOVA\n")
+
+    if (is.null(btw_factor)) {
+        my_stats <- ez::ezANOVA(
+            my_data,
+            dv = .(depvar),
+            wid = .(subID),
+            within = .(wn_factor),
+            detailed = TRUE,
+            type = 3,
+            return_aov = TRUE
+        )
+    } else {
+        my_stats <- ez::ezANOVA(
+            my_data,
+            dv = .(depvar),
+            wid = .(subID),
+            within = .(wn_factor),
+            between = .(btw_factor),
+            detailed = TRUE,
+            type = 3,
+            return_aov = TRUE
+        )
+    }
+
+    print(my_stats)
+
+    # run non-parametric ANOVA
+    cat("\nNon-parametric ANOVA (Kruskal-wallis test)\n")
+    print(stats::friedman.test(depvar ~ wn_factor | subID, data = my_data))
+
+    # Re-run t-test without pooled variance
+    print('Run multiple t-tests without pooling variances, using "Holm" correction')
+    print(
+        stats::pairwise.t.test(my_data$depvar, my_data$wn_factor,
+                               p.adjust.method = "holm",
+                               pool.sd = FALSE, paired = TRUE,
+                               alternative = c("two.sided")
+        )
+    )
+}
