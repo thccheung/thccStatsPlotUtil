@@ -27,10 +27,9 @@ library(dplyr)
 library(stringr)
 library(tibble)
 library(tidyr)
-library(RColorBrewer)
 source("./R/stats_summary.R")
 source("./R/stats_funs.R")
-source("./R/quick_plot.R")
+source("./R/barplot_for_notebook.R")
 
 ## Folders
 my_work_folder <- "E:/TimCheung/Dropbox (Personal)/"
@@ -83,7 +82,7 @@ my_colnames_non_char <- colnames(data_combo[!my_col_char])
 ``` {r plot_analyse_loop, fig.width=4, fig.height=3, echo=FALSE, message=FALSE, error=TRUE}
 
 exclude_cw_ccw <- TRUE
-my_colour_set <- RColorBrewer::brewer.pal(9, 'Set1')
+
 my_curr_var <- 1
 
 for (i in 1:length(my_colnames_non_char)) {
@@ -108,14 +107,12 @@ for (i in 1:length(my_colnames_non_char)) {
         by_sess_name_data_test
 
         # plot graph
-        my_plot <- quick_barplot(data_test, sess_name, var) +
+        my_plot <- nb_barplot(data_test, sess_name, var) +
             theme(axis.text.x = element_text(angle = 20, vjust = 0.8, hjust=0.8),
                   axis.title.x = element_blank(),
                   axis.title.y = element_blank(),
                   legend.position = "none") +
-            ggtitle(my_var) +
-            scale_colour_manual(values=my_colour_set[c(1:4)]) +
-            scale_fill_manual(values=my_colour_set[c(1:4)])
+            ggtitle(my_var)
         print(my_plot)
 
         # t-tests, BL vs. Probe-S1

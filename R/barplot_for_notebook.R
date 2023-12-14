@@ -16,6 +16,9 @@ nb_barplot <- function(df_data, grpvar, yplot) {
                    mapping = aes(x = {{ grpvar }},
                                  y = Depvar,
                                  colour = {{ grpvar }}),
+                   alpha = 1/2,
+                   stroke = 0,
+                   size = 2,
                    position = ggplot2::position_dodge2(0.25)) +
 
         geom_crossbar(data = plot_data_summ,
