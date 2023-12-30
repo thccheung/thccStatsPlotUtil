@@ -1,0 +1,122 @@
+---
+title: "CJXT1-2 DA norm OField, DLC output analysis, BL vs. LD1, timebins"
+author: "THC Cheung"
+date: "`r format(Sys.time())`"
+output:
+  html_document:
+    toc: yes
+    df_print: paged
+  html_notebook:
+    toc: yes
+    number_sections: yes
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE, cache=FALSE}
+options(scipen = 0, digits = 3) # set decimal points in output
+```
+
+```{r load_data, include = FALSE}
+# make sure to select "Project Directory" as Knit directory in RStudio GUI
+
+## Setup
+library(readr)
+library(dplyr)
+library(stringr)
+library(tibble)
+library(tidyr)
+library(RColorBrewer)
+source("./R/stats_summary.R")
+source("./R/stats_funs.R")
+source("./R/quick_plot.R")
+
+
+## Folders
+my_work_folder <- "E:/TimCheung/Dropbox (Personal)/"
+# my_work_folder <- "C:/Users/timhc/Dropbox/"
+
+proj_folder <- "/Work/DLC/Cir_Sq_OpField_v2-TC-2022-10-18/vid_analyse/DLC_bout_csv_output/"
+
+file_path_BL_S1_1 <- "/DLC-bout_CJXT1-2_NoTreat-S1-1_timebins.csv"
+file_path_BL_S1_2 <- "/DLC-bout_CJXT1-2_NoTreat-S1-2_timebins.csv"
+
+file_path_BL_S1_1 <- paste0(my_work_folder, proj_folder, file_path_BL_S1_1)
+file_path_BL_S1_2 <- paste0(my_work_folder, proj_folder, file_path_BL_S1_2)
+
+# Read CSV to dataframe
+data_BL_S1_1 <- readr::read_csv(file_path_BL_S1_1) %>%
+    tibble::add_column(sess = "S1_1", sess_name = "S1_avg")
+
+data_BL_S1_2 <- readr::read_csv(file_path_BL_S1_2) %>%
+    tibble::add_column(sess = "S1_2", sess_name = "S1_avg")
+
+data_combo <- dplyr::bind_rows(data_BL_S1_1, data_BL_S1_2)
+
+data_combo <- data_combo %>%
+    mutate(MouseID_sess_name = paste0(MouseID, "_", sess_name))
+
+# Re-order factors for plotting
+my_col_factor <- c('MouseID', '6OHDA_side', 'sess', 'sess_name', 'Ofield', 'start_time_in_min', 'end_time_in_min')
+data_combo[my_col_factor] <- lapply(data_combo[my_col_factor], factor)
+
+# Pull out non-character columns (these are usually data variables) vs. character columns (these are usually factors)
+my_col_fact <- data_combo %>% dplyr::summarise_all(class) %>% stringr::str_detect("character|factor")
+my_col_fact <- my_col_fact | colnames(data_combo) == "start_time_in_min" | colnames(data_combo) == "end_time_in_min"
+my_colnames_factor <- colnames(data_combo[my_col_fact])
+my_colnames_non_factor <- colnames(data_combo[!my_col_fact])
+
+```
+
+
+
+``` {r plot_analyse_loop, fig.width=4, fig.height=4, echo=FALSE, message=FALSE, error=TRUE}
+
+exclude_cw_ccw <- FALSE
+my_curr_var <- 1
+
+for (i in 1:length(my_colnames_non_factor)) {
+
+    # go thru each column variables
+    my_colnames_test <- append(my_colnames_factor, my_colnames_non_factor[i])
+    my_var <- my_colnames_non_factor[i]
+    data_test <- data_combo[my_colnames_test] %>% rename(var = all_of(my_var))
+
+    contains_cw_ccw = stringr::str_detect(my_var, "cw_") | stringr::str_detect(my_var, "ccw_")
+    if (exclude_cw_ccw & contains_cw_ccw) {
+        next
+    } else {
+
+        # print(paste0(my_curr_var, ": ", my_var))
+        cat("\n*****", my_curr_var, ":", my_var, "*****\n")
+
+        # summarize
+        data_test <- data_test %>%
+            group_by(MouseID, start_time_in_min) %>%
+            calc_mean_sem() %>%
+            select(MouseID, start_time_in_min, var_mean) %>%
+            mutate(sess_name = 'S1_avg') %>%
+            rename(var = var_mean)
+
+        y_max = max(data_test$var, 0) * 1.05
+        y_min = min(data_test$var, 0) * 1.05
+        my_ylim <- ggplot2::ylim(y_min, y_max)
+
+        data_plot <- data_test
+
+        my_plot <- quick_lineplot_mean_sem_indi(
+            data_plot, start_time_in_min, var, sess_name, MouseID) +
+            xlab("time") +
+            ggplot2::theme(axis.title.y = element_blank(), legend.position='none') +
+            ggtitle(my_var) # +
+            # my_ylim
+
+        print(my_plot)
+
+        my_curr_var <- my_curr_var + 1
+    }
+
+}
+
+```
+

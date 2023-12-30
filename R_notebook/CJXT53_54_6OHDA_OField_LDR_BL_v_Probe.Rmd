@@ -72,9 +72,9 @@ data_combo <- data_combo %>%
     mutate(sess_name = forcats::fct_relevel(sess_name, my_col_factor_order))
 
 # Pull out non-character columns (these are usually data variables) vs. character columns (these are usually factors)
-my_col_char <- data_combo %>% dplyr::summarise_all(class) %>% stringr::str_detect("character|factor")
-my_colnames_char <- colnames(data_combo[my_col_char])
-my_colnames_non_char <- colnames(data_combo[!my_col_char])
+my_col_fact <- data_combo %>% dplyr::summarise_all(class) %>% stringr::str_detect("character|factor")
+my_colnames_factor <- colnames(data_combo[my_col_fact])
+my_colnames_non_factor <- colnames(data_combo[!my_col_fact])
 
 ```
 
@@ -86,11 +86,11 @@ exclude_cw_ccw <- TRUE
 my_colour_set <- RColorBrewer::brewer.pal(9, 'Set1')
 my_curr_var <- 1
 
-for (i in 1:length(my_colnames_non_char)) {
+for (i in 1:length(my_colnames_non_factor)) {
 
     # go thru each column variables
-    my_colnames_test <- append(my_colnames_char, my_colnames_non_char[i])
-    my_var <- my_colnames_non_char[i]
+    my_colnames_test <- append(my_colnames_factor, my_colnames_non_factor[i])
+    my_var <- my_colnames_non_factor[i]
     data_test <- data_combo[my_colnames_test] %>% rename(var = all_of(my_var))
 
     contains_cw_ccw = stringr::str_detect(my_var, "cw_") | stringr::str_detect(my_var, "ccw_")
@@ -122,14 +122,14 @@ for (i in 1:length(my_colnames_non_char)) {
         pull_grp = "paired"
         data_test_diff_paired <- data_test %>%
             dplyr::filter(context==pull_grp) %>%
-            dplyr::select(!sess_name) %>%
+            dplyr::select(!c(sess_name, Ofield)) %>%
             tidyr::pivot_wider(names_from="sess", values_from="var") %>%
             dplyr::mutate(diff = probe_S1 - BL)
 
         pull_grp = "unpaired"
         data_test_diff_unpaired <- data_test %>%
             dplyr::filter(context==pull_grp) %>%
-            dplyr::select(!sess_name) %>%
+            dplyr::select(!c(sess_name, Ofield)) %>%
             tidyr::pivot_wider(names_from="sess", values_from="var") %>%
             dplyr::mutate(diff = probe_S1 - BL)
 
@@ -146,14 +146,14 @@ for (i in 1:length(my_colnames_non_char)) {
         pull_grp = "BL"
         data_test_diff_BL <- data_test %>%
             dplyr::filter(sess==pull_grp) %>%
-            dplyr::select(!sess_name) %>%
+            dplyr::select(!c(sess_name, Ofield)) %>%
             tidyr::pivot_wider(names_from="context", values_from="var") %>%
             dplyr::mutate(diff = paired - unpaired)
 
         pull_grp = "probe_S1"
         data_test_diff_probe <- data_test %>%
             dplyr::filter(sess==pull_grp) %>%
-            dplyr::select(!sess_name) %>%
+            dplyr::select(!c(sess_name, Ofield)) %>%
             tidyr::pivot_wider(names_from="context", values_from="var") %>%
             dplyr::mutate(diff = paired - unpaired)
 

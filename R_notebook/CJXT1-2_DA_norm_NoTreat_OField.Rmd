@@ -1,5 +1,5 @@
 ---
-title: "CJXT53-54 6OHDA OField LDR, DLC output analysis, BL vs LD1"
+title: "CJXT1-2 DA norm OField, DLC output analysis"
 author: "THC Cheung"
 date: "`r format(Sys.time())`"
 output:
@@ -37,46 +37,35 @@ my_work_folder <- "E:/TimCheung/Dropbox (Personal)/"
 
 proj_folder <- "/Work/DLC/Cir_Sq_OpField_v2-TC-2022-10-18/vid_analyse/DLC_bout_csv_output/"
 
-file_path_BL_paired <- "/DLC-bout_CJXT53_54_Baseline-S4-paired.csv"
-file_path_LD1_S1 <- "/DLC-bout_CJXT53_54_LD1-S1-paired.csv"
-file_path_LD1_S5 <- "/DLC-bout_CJXT53_54_LD1-S5-paired.csv"
+file_path_BL_S1_1 <- "/DLC-bout_CJXT1-2_NoTreat-S1-1.csv"
+file_path_BL_S1_2 <- "/DLC-bout_CJXT1-2_NoTreat-S1-2.csv"
 
-file_path_BL_paired <- paste0(my_work_folder, proj_folder, file_path_BL_paired)
-file_path_LD1_S1 <- paste0(my_work_folder, proj_folder, file_path_LD1_S1)
-file_path_LD1_S5 <- paste0(my_work_folder, proj_folder, file_path_LD1_S5)
+file_path_BL_S1_1 <- paste0(my_work_folder, proj_folder, file_path_BL_S1_1)
+file_path_BL_S1_2 <- paste0(my_work_folder, proj_folder, file_path_BL_S1_2)
 
 # Read CSV to dataframe
-data_BL_paired <- readr::read_csv(file_path_BL_paired) %>%
-    tibble::add_column(sess_name = "BL_paired", sess = "BL", context = "paired")
+data_BL_S1_1 <- readr::read_csv(file_path_BL_S1_1) %>%
+    tibble::add_column(sess = "S1_1", sess_name = "S1_avg")
 
-data_LD1_S1 <- readr::read_csv(file_path_LD1_S1) %>%
-    tibble::add_column(sess_name = "LD1_S1", sess = "LD1_S1", context = "paired")
+data_BL_S1_2 <- readr::read_csv(file_path_BL_S1_2) %>%
+    tibble::add_column(sess = "S1_2", sess_name = "S1_avg")
 
-data_LD1_S5 <- readr::read_csv(file_path_LD1_S5) %>%
-    tibble::add_column(sess_name = "LD1_S5", sess = "LD1_S5", context = "paired")
-
-data_combo <- dplyr::bind_rows(data_BL_paired, data_LD1_S1, data_LD1_S5)
+data_combo <- dplyr::bind_rows(data_BL_S1_1, data_BL_S1_2)
 
 # Re-order factors for plotting
-my_col_factor <- c('MouseID', '6OHDA_side', 'sess_name', 'sess', 'context')
-my_col_factor_order <- c('BL_paired', 'LD1_S1', 'LD1_S5')
+my_col_factor <- c('MouseID', '6OHDA_side', 'sess', 'sess_name', 'Ofield')
 data_combo[my_col_factor] <- lapply(data_combo[my_col_factor], factor)
-data_combo <- data_combo %>%
-    mutate(sess_name = forcats::fct_relevel(sess_name, my_col_factor_order))
 
 # Pull out non-character columns (these are usually data variables) vs. character columns (these are usually factors)
 my_col_fact <- data_combo %>% dplyr::summarise_all(class) %>% stringr::str_detect("character|factor")
 my_colnames_factor <- colnames(data_combo[my_col_fact])
 my_colnames_non_factor <- colnames(data_combo[!my_col_fact])
 
-
 ```
 
 
-
-``` {r plot_analyse_loop, fig.width=4, fig.height=3, echo=FALSE, message=FALSE, error=TRUE}
-
-exclude_cw_ccw <- TRUE
+``` {r plot_analyse_loop, fig.width=1.5, fig.height=3, echo=FALSE, message=FALSE, error=TRUE}
+exclude_cw_ccw <- FALSE
 my_colour_set <- RColorBrewer::brewer.pal(9, 'Set1')
 my_curr_var <- 1
 
@@ -96,10 +85,21 @@ for (i in 1:length(my_colnames_non_factor)) {
         cat("\n*****", my_curr_var, ":", my_var, "*****\n")
 
         # summarize
+        data_test <- data_test %>%
+            group_by(MouseID) %>%
+            calc_mean_sem() %>%
+            select(MouseID, var_mean) %>%
+            mutate(sess_name = 'S1_avg') %>%
+            rename(var = var_mean)
+
         by_sess_name_data_test <- data_test %>%
             group_by(sess_name) %>%
             calc_mean_sem()
         by_sess_name_data_test
+
+        y_max = max(data_test$var, 0) * 1.05
+        y_min = min(data_test$var, 0) * 1.05
+        my_ylim <- ggplot2::ylim(y_min, y_max)
 
         # plot graph
         my_plot <- quick_barplot(data_test, sess_name, var) +
@@ -107,19 +107,15 @@ for (i in 1:length(my_colnames_non_factor)) {
                   axis.title.x = element_blank(),
                   axis.title.y = element_blank(),
                   legend.position = "none") +
-            ggtitle(my_var) +
-            scale_colour_manual(values=my_colour_set[c(1, 5, 7)]) +
-            scale_fill_manual(values=my_colour_set[c(1, 5, 7)])
+            ggtitle(my_var) #+
+            # my_ylim
         print(my_plot)
-
-        # repeated one-way ANOVA
-        oneway_anova_wn(data_test, subID="MouseID", wn_factor="sess", btw_factor = NULL, depvar="var",
-                        remove_NaN = TRUE)
 
         my_curr_var <- my_curr_var + 1
     }
 
 }
+
 
 ```
 
